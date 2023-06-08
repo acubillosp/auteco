@@ -11,3 +11,4 @@ datagroup: auteco_1_default_datagroup {
 persist_with: auteco_1_default_datagroup
 
 explore: auteco_poc {}
+explore: precio_ajustado {}
