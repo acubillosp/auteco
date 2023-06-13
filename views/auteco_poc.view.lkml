@@ -90,15 +90,15 @@ view: auteco_poc {
   }
 
   dimension: date {
-    sql:
-    {% if date_granularity._parameter_value == 'year' %}
-      ${fecha_year}
-    {% elsif date_granularity._parameter_value == 'month' %}
-      ${fecha_month}
-    {% else %}
-      ${fecha_date}
-    {% endif %};;
+    sql: {% if date_granularity._parameter_value == 'year' %}
+          ${fecha_year}
+        {% elsif date_granularity._parameter_value == 'month' %}
+          ${fecha_month}
+        {% else %}
+          ${fecha_date}
+        {% endif %} ;;
   }
+
 #######################Link
   dimension: empresa_link {
     type: string
@@ -139,15 +139,24 @@ view: auteco_poc {
         ;;
   }
 
-
   measure: count {
     type: count
-    drill_fields: []
   }
+
+#  measure: promedio_precio {
+#    type: number
+#    sql: ROUND(AVG(${TABLE}.AVG_PRECIO),2) ;;
+#    value_format: "$#,##0.00"
+#  }
   measure: promedio_precio {
     type: number
-    sql: ROUND(AVG(${TABLE}.AVG_PRECIO),2) ;;
+    sql: ROUND(AVG(CASE WHEN ${TABLE}.AVG_PRECIO <> 0 THEN ${TABLE}.AVG_PRECIO END), 2) ;;
     value_format: "$#,##0.00"
+  }
+  measure: unidades {
+    type: sum
+    sql: ${cantidad} ;;
+   ## html: {{ unidades }} | {{  }} of total ;;
   }
   dimension: valor_tmr_primera_fecha {
     type: number
@@ -158,17 +167,40 @@ view: auteco_poc {
   }
 #######################################################################
 
-  dimension: precio_dolarizado {
+ # dimension: precio_dolarizado {
+  #  type: string
+   # sql: CASE
+    #WHEN ${date} =
+    #(SELECT MIN(${date}) FROM auteco_poc WHERE ${avg_precio} <> 0 AND ${linea} = ${TABLE}.linea)
+  #  THEN CAST(${avg_precio}/${avg_trm} AS STRING) END ;;
+  #}
+
+  #dimension: primera_fecha_valida {
+   # type: string
+  #  sql: CASE WHEN ${date} = (SELECT FIRST_VALUE(${date}) OVER (PARTITION BY ${linea} ORDER BY ${date}) FROM auteco_poc WHERE ${avg_precio} <> 0 limit 1) THEN '1' ELSE '0' END ;;
+  #}
+
+  dimension: auteco_poc_primera_fecha_valida_prueba {
     type: string
-    sql: CASE
-    WHEN ${date} =
-    (SELECT MIN(${date}) FROM auteco_poc WHERE ${avg_precio} <> 0 AND ${linea} = ${TABLE}.linea)
-    THEN CAST(${avg_precio}/${avg_trm} AS STRING) END ;;
+    sql: CASE WHEN FORMAT_TIMESTAMP('%Y', PARSE_TIMESTAMP('%Y-%m', FORMAT_DATE('%Y-%m', DATE(${TABLE}.ANIO || '-' || ${TABLE}.MES || '-01'))))
+               = (SELECT FORMAT_TIMESTAMP('%Y', MIN(PARSE_TIMESTAMP('%Y-%m', FORMAT_DATE('%Y-%m', DATE(${TABLE}.ANIO || '-' || ${TABLE}.MES || '-01')))))
+                  FROM auteco_poc WHERE ${avg_precio} <> 0 AND ${linea} = ${TABLE}.linea limit 1)
+         THEN '1'
+         ELSE '0'
+    END ;;
   }
 
-  dimension: primera_fecha_valida {
+  dimension: auteco_poc_precio_dolarizado_prueba {
     type: string
-    sql: CASE WHEN ${mes} = (SELECT FIRST_VALUE(${mes}) OVER (PARTITION BY ${linea} ORDER BY ${mes}) FROM auteco_poc WHERE ${avg_precio} <> 0 limit 1) THEN '1' ELSE '0' END ;;
+    sql: CASE WHEN FORMAT_DATE('%Y-%m', DATE(${TABLE}.ANIO || '-' || ${TABLE}.MES || '-01'))
+               = (SELECT FORMAT_DATE('%Y-%m', MIN(DATE(${TABLE}.ANIO || '-' || ${TABLE}.MES || '-01')))
+                  FROM auteco_poc WHERE ${avg_precio} <> 0 AND ${linea} = ${TABLE}.linea AND auteco_poc_primera_fecha_valida_prueba = '1')
+         THEN CAST(${TABLE}.AVG_PRECIO/ ${TABLE}.AVG_TRM AS STRING)
+         ELSE NULL
+    END;;
   }
+
+
+
 
 }
